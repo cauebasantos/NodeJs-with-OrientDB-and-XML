@@ -46,82 +46,23 @@ app.use('/users', usersRouter);
 
 app.use(bodyParser.urlencoded({extended: true}));
 
-
-
-//função que faz o parser do xml online
-// async function getData(url){
-//   const res = await axios.get(url);
-//   return await res.data;
-// }
-
 //variavel que armazena a query de saida
-let final_qry = [];
-
-// function setResult(produto){
-//   return new Promisse ((resolve, reject) => {
-//     final_qry.push(produto);
-//   });  
-// }
+let retorno_resultado = [];
 
 //função que acrescenta o elemento preco e seu valor no json produto
 function setPrecoFromXML(url, produto) {
 
-  //var preco;
   return new Promise (function(resolve, reject){
     request(url, function parseFromJson(error, response, body) {
       if(error) return reject(error);
       resolve(body);
     });
   });
-  
-  // request(url, function parseFromJson(error, response, body) {
-  //   let doc = new dom().parseFromString(body);
-  //   let nodes = xpath.select("//produto[@id="+ produto.id +"]/preco", doc);
-    
-  //   preco = nodes[0].firstChild.data;
-  //   console.log(preco);
-  // });
-
-  // console.log(preco);
-  // return preco;
-
-
-
-  // getData(url)
-  // .then(data => {
-  //   let doc = new dom().parseFromString(data);
-  //   let nodes = xpath.select("//produto[@id="+ produto.id +"]/preco", doc);
-    
-  //   //adciona o preco
-  //   produto.preco = nodes[0].firstChild.data;
-  //   console.log(produto);
-
-  //   //joga o resultado num array 
-  //   final_qry.push(produto); 
-  // })
-  // .catch(err => console.log(err));
-
-
-
-
-  // axios.get(url)
-  // .then(function (response){
-  //   let doc = new dom().parseFromString(response.data);
-  //   let nodes = xpath.select("//produto[@id="+ produto.id +"]/preco", doc);
-    
-  //   produto.preco = nodes[0].firstChild.data;
-  //   console.log(produto);
-  //   final_qry.push(produto); 
-  // })
-  // .catch(error => console.log(error));
 
 }
 
-
-
 //submete o formulario em get e renderiza a página
 app.get('/submit-form-get', function (request, response) {
-
 
   db.query(
     'SELECT * FROM Produto WHERE nome LIKE :submit_nome',
@@ -130,53 +71,32 @@ app.get('/submit-form-get', function (request, response) {
      }
     }
   )
-  .then(async function getResult(qry_result){
+  .then(async function getResult(query_resultado){
       try {
-        final_qry = [];
-        for (let i = 0; i < qry_result.length; i++) {
-          let body = await setPrecoFromXML(precoUrl, qry_result[i]);
+        retorno_resultado = [];
+
+        for (let i = 0; i < query_resultado.length; i++) {
+          let body = await setPrecoFromXML(precoUrl, query_resultado[i]);
           let doc = new dom().parseFromString(body);
-          let nodes = xpath.select("//produto[@id="+ qry_result[i].id +"]/preco", doc);
+          let nodes = xpath.select("//produto[@id="+ query_resultado[i].id +"]/preco", doc);
         
           let preco = nodes[0].firstChild.data;
-          console.log(preco);
-          qry_result[i].preco = preco;
-          final_qry.push(qry_result[i]);
+          query_resultado[i].preco = preco;
+          retorno_resultado.push(query_resultado[i]);
         }
-        return final_qry;
+        
+        return retorno_resultado;
+
       } catch(error){
           console.error(error);
       }
 
     })
-  .then(function(final_qry){
-    let keys = Object.keys(final_qry);
-
-    response.render('resultados', {title: 'Resultados', chaves: keys,  produtos: final_qry});
+  .then(function(resultado){
+    let keys = Object.keys(resultado);
+    response.render('resultados', {title: 'Resultados', chaves: keys,  produtos: resultado});
     });
 
-
-    //exibe na tela o resultado
-    //let keys = Object.keys(final_qry);
-    //response.render('resultados', {title: 'Resultados', chaves: keys,  produtos: final_qry});
-    //return response.send(final_qry);
-
-    // response.redirect(request.get('referer'));
-
-
-    // for (let i = 0; i < qry_result.length; i++) {
-    //   var preco = setPrecoFromXML(precoUrl, qry_result[i]);
-    //   console.log(preco);
-    //   qry_result[i].preco = preco;
-    // }
-     
-    // final_qry = qry_result;
-
-    // let doc = new dom().parseFromString(body);
-    // let nodes = xpath.select("//produto[@id="+ produto.id +"]/preco", doc);
-    
-    // preco = nodes[0].firstChild.data;
-    // console.log(preco);
 });
 
 //submete o formulario em post
@@ -189,12 +109,12 @@ app.post('/submit-form-post', function (request, response) {
      }
     }
   ).then(
-    function(qry_result){
-      for (let i = 0; i < qry_result.length; i++) {
-        setPrecoFromXML(precoUrl, qry_result[i]);
+    function(query_resultado){
+      for (let i = 0; i < query_resultado.length; i++) {
+        setPrecoFromXML(precoUrl, query_resultado[i]);
       }
     });
-    response.render('resultados', {title: 'Resultados', produtos: final_qry});
+    response.render('resultados', {title: 'Resultados', produtos: retorno_resultado});
 });
 
 // catch 404 and forward to error handler
