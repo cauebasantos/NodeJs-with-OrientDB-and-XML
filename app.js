@@ -63,11 +63,11 @@ function setPrecoFromXML(url, produto) {
 
 //submete o formulario em get e renderiza a página
 app.get('/submit-form-get', function (request, response) {
-
+  let nome_produto = "%" + request.query.nome.toLowerCase() + "%";
   db.query(
-    'SELECT * FROM Produto WHERE nome LIKE :submit_nome',
+    'SELECT * FROM Produto WHERE nome.toLowerCase() LIKE :submit_nome',
     {params: {
-       submit_nome: request.query.nome
+       submit_nome: nome_produto
      }
     }
   )
@@ -79,10 +79,38 @@ app.get('/submit-form-get', function (request, response) {
           let body = await setPrecoFromXML(precoUrl, query_resultado[i]);
           let doc = new dom().parseFromString(body);
           let nodes = xpath.select("//produto[@id="+ query_resultado[i].id +"]/preco", doc);
-        
+          
           let preco = nodes[0].firstChild.data;
-          query_resultado[i].preco = preco;
-          retorno_resultado.push(query_resultado[i]);
+
+          let produto = query_resultado[i];
+          produto.preco = preco;
+          let tipo = '@type';
+          let classe = '@class';
+          let rid = '@rid';
+          let versao =  '@version';
+
+          delete produto[tipo]
+          delete produto[classe];
+          delete produto[rid];
+          delete produto[versao];
+
+          if(produto.marca){
+            produto.nome += " " + produto.marca;
+          } 
+
+          if(produto.cor ){
+            produto.nome += " " + produto.cor;
+          } 
+
+          if(produto.autor){
+            produto.nome += " " + produto.autor;
+          } 
+
+          if(produto.isbn){
+            produto.nome += " " + produto.isbn;
+          } 
+
+          retorno_resultado.push(produto);
         }
         
         return retorno_resultado;
@@ -93,28 +121,10 @@ app.get('/submit-form-get', function (request, response) {
 
     })
   .then(function(resultado){
-    let keys = Object.keys(resultado);
-    response.render('resultados', {title: 'Resultados', chaves: keys,  produtos: resultado});
+
+    response.render('resultados', {title: 'Resultados', produtos: resultado});
     });
 
-});
-
-//submete o formulario em post
-app.post('/submit-form-post', function (request, response) {
-
-  db.query(
-    'SELECT * FROM Produto WHERE nome LIKE :submit_nome',
-    {params: {
-       submit_nome: request.body.nome
-     }
-    }
-  ).then(
-    function(query_resultado){
-      for (let i = 0; i < query_resultado.length; i++) {
-        setPrecoFromXML(precoUrl, query_resultado[i]);
-      }
-    });
-    response.render('resultados', {title: 'Resultados', produtos: retorno_resultado});
 });
 
 // catch 404 and forward to error handler
