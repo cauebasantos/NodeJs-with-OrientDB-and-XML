@@ -18,7 +18,7 @@ const axios = require('axios');
 
 const precoUrl = 'https://sededaempresa.000webhostapp.com';
 
-var db = new ODatabase({
+const db = new ODatabase({
    host:     'localhost',
    port:     2424,
    username: 'admin',
@@ -26,10 +26,13 @@ var db = new ODatabase({
    name:     'estoque'
 });
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+const indexRouter = require('./routes/index');
+const usersRouter = require('./routes/users');
 
-var app = express();
+//Variavel que armazena a query de saida
+let retorno_resultado = [];
+
+const app = express();
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -46,11 +49,9 @@ app.use('/users', usersRouter);
 
 app.use(bodyParser.urlencoded({extended: true}));
 
-//variavel que armazena a query de saida
-let retorno_resultado = [];
 
-//função que acrescenta o elemento preco e seu valor no json produto
-function setPrecoFromXML(url, produto) {
+//Função que acrescenta o elemento preco e seu valor no json produto
+function getPrecoFromXML(url, produto) {
 
   return new Promise (function(resolve, reject){
     request(url, function parseFromJson(error, response, body) {
@@ -61,39 +62,43 @@ function setPrecoFromXML(url, produto) {
 
 }
 
-//submete o formulario em get e renderiza a página
+//Submete o formulario em get, realiza a query e renderiza a página
 app.get('/submit-form-get', function (request, response) {
   let nome_produto = "%" + request.query.nome.toLowerCase() + "%";
+
+  //Realiza a query e retorna os produtos que satisfaçam a condição
   db.query(
     'SELECT * FROM Produto WHERE nome.toLowerCase() LIKE :submit_nome',
     {params: {
        submit_nome: nome_produto
      }
     }
-  )
-  .then(async function getResult(query_resultado){
+  ).then(async function getResult(query_resultado){
       try {
         retorno_resultado = [];
 
+        //Para cada produto no resultado da query, busca
+        //seu preço, incrementa ao produto e o trata para
+        //ser renderizado pro cliente
         for (let i = 0; i < query_resultado.length; i++) {
-          let body = await setPrecoFromXML(precoUrl, query_resultado[i]);
+          
+          //Retorna os preços dos produtos, ainda com suas tags
+          let body = await getPrecoFromXML(precoUrl, query_resultado[i]);
           let doc = new dom().parseFromString(body);
+
+          //Retorna o preço respectivo ao id do atual produto
+          //da iteração 
           let nodes = xpath.select("//produto[@id="+ query_resultado[i].id +"]/preco", doc);
           
+          //Recupera o preço do resultado da query
           let preco = nodes[0].firstChild.data;
 
+          //Acrescenta o atributo preço ao produto
           let produto = query_resultado[i];
           produto.preco = preco;
-          let tipo = '@type';
-          let classe = '@class';
-          let rid = '@rid';
-          let versao =  '@version';
-
-          delete produto[tipo]
-          delete produto[classe];
-          delete produto[rid];
-          delete produto[versao];
-
+          
+          //Faz o tratamento do produto adicionando ao seu nome 
+          //o atributo que queremos que apareça para o cliente      
           if(produto.marca){
             produto.nome += " " + produto.marca;
           } 
@@ -110,6 +115,11 @@ app.get('/submit-form-get', function (request, response) {
             produto.nome += " " + produto.isbn;
           } 
 
+          if(produto.ano){
+            produto.nome += " " + produto.ano;
+          } 
+
+          //Joga o produto no array de retorno
           retorno_resultado.push(produto);
         }
         
@@ -119,10 +129,9 @@ app.get('/submit-form-get', function (request, response) {
           console.error(error);
       }
 
-    })
-  .then(function(resultado){
-
-    response.render('resultados', {title: 'Resultados', produtos: resultado});
+    }).then(function(resultado){
+        //Renderiza na página resultados os produtos retornado pela query
+        response.render('resultados', {title: 'Resultados', produtos: resultado});
     });
 
 });
@@ -143,8 +152,6 @@ app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
-
-
 
 app.listen(3000, function () {
     console.log("Express server listening on port 3000");

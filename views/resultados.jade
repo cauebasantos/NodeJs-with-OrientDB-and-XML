@@ -1,0 +1,23 @@
+extends layout
+
+block content
+
+  div
+    h1= title
+    -var produtolist = produtos
+    -var chaveslist = chaves
+    table.table.table-hover
+      thead
+        tr
+          th="Nome do produto"
+          th="Quantidade em estoque"
+          th="Preço da unidade"
+
+            
+      tbody
+        each produto in produtos
+          tr
+            td=produto.nome
+            td=produto.qty
+            td=produto.preco
+

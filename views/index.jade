@@ -1,0 +1,9 @@
+extends layout
+
+block content
+  form(action = "/submit-form-get")
+    div.input
+      span.label Nome
+      input(type="text", name="nome")
+    div.actions
+      input(type="submit", name="submit")
